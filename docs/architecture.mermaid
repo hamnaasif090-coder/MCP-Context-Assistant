@@ -1,0 +1,62 @@
+---
+title: MCP Assistant — System Architecture
+---
+graph TB
+    subgraph CLIENT["Client Layer"]
+        UI[Web UI\nstatic/index.html]
+        CLI[CLI Tool\ncli.py]
+        EXT[External Apps\ncurl / SDK / Postman]
+    end
+
+    subgraph API["FastAPI Application — main.py"]
+        direction TB
+        DR[/api/v1/documents\nUpload · Index · Delete/]
+        SR[/api/v1/search\nSemantic · Tool Call/]
+        QR[/api/v1/qa\nAsk · Stream · Memory/]
+        CR[/api/v1/context\nBuild · Guardrail · Snapshots/]
+        AR[/api/v1/admin\nReindex · Reset · Diagnostics/]
+    end
+
+    subgraph ORCH["Retrieval Orchestrator — api/retrieval.py"]
+        PG[PromptGuardrails\nInjection detection\nBlocklist\nLength check]
+        CTX[ContextManager\nToken budgeting\nDeduplication\nRanking]
+        MCP[MCP Tool Dispatcher\nretrieve_context\nlist_documents\nget_memory]
+    end
+
+    subgraph STORAGE["Storage Layer"]
+        VS[(ChromaDB\nVector Store\nPersistent · Cosine sim)]
+        MEM[(Memory\nJSON files\nPer-session)]
+        KB[(Knowledge Base\nMarkdown files\n/knowledge_base)]
+        SNAP[(Context Snapshots\nJSON audit trail\n/context)]
+    end
+
+    subgraph ML["ML / AI Layer"]
+        EMB[EmbeddingService\nsentence-transformers\nall-MiniLM-L6-v2\nFREE local · 80MB]
+        LLM{LLM Provider}
+        ANT[Anthropic Claude\nclaude-haiku/sonnet]
+        OLL[Ollama\nllama3 / mistral\nFully FREE local]
+        MOK[Mock Provider\nTesting / CI]
+    end
+
+    subgraph INGEST["Ingestion Pipeline — api/ingestion.py"]
+        PARSE[Frontmatter Parser]
+        CHUNK[Text Chunker\n512 chars · 64 overlap]
+        IDX[Indexer\nChunk → Embed → Upsert]
+    end
+
+    CLIENT --> API
+    API --> ORCH
+    API --> INGEST
+    ORCH --> ML
+    ORCH --> STORAGE
+    INGEST --> ML
+    INGEST --> STORAGE
+    LLM --> ANT
+    LLM --> OLL
+    LLM --> MOK
+    EMB --> VS
+
+    style VS fill:#1e40af,color:#fff
+    style EMB fill:#065f46,color:#fff
+    style LLM fill:#92400e,color:#fff
+    style PG fill:#7f1d1d,color:#fff

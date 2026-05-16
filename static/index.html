@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCP Context Assistant</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;600;800&display=swap');
+
+  :root {
+    --bg: #080812;
+    --surface: #0f0f1e;
+    --surface2: #161628;
+    --border: #2a2a4a;
+    --accent: #7c3aed;
+    --accent2: #06b6d4;
+    --accent3: #10b981;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --danger: #ef4444;
+    --code: #1e1b4b;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; }
+
+  /* Grid layout */
+  .layout { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
+
+  /* Sidebar */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .logo { font-size: 1.1em; font-weight: 800; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .logo span { font-size: 1.4em; }
+  .nav-btn {
+    width: 100%; text-align: left; background: none; border: 1px solid transparent;
+    color: var(--muted); padding: 10px 14px; border-radius: 8px; cursor: pointer;
+    font-family: 'Syne', sans-serif; font-size: 0.9em; transition: all 0.15s;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .nav-btn:hover { background: var(--surface2); color: var(--text); border-color: var(--border); }
+  .nav-btn.active { background: #1e1b4b; color: var(--accent); border-color: var(--accent); }
+  .nav-section { color: var(--muted); font-size: 0.7em; text-transform: uppercase; letter-spacing: 2px; padding: 12px 14px 4px; }
+
+  .stats-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-top: auto; }
+  .stat-row { display: flex; justify-content: space-between; font-size: 0.85em; padding: 4px 0; }
+  .stat-val { color: var(--accent); font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+
+  /* Main */
+  .main { display: flex; flex-direction: column; overflow: hidden; }
+  .topbar {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 16px 28px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .topbar h2 { font-size: 1.1em; font-weight: 600; }
+  .badge { background: var(--code); color: #a5b4fc; padding: 4px 10px; border-radius: 20px; font-size: 0.75em; font-family: 'JetBrains Mono', monospace; }
+
+  .content { flex: 1; overflow-y: auto; padding: 28px; }
+
+  /* Panels */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* Chat panel */
+  .chat-layout { display: grid; grid-template-rows: 1fr auto; height: calc(100vh - 130px); }
+  .messages { overflow-y: auto; padding: 8px 0; display: flex; flex-direction: column; gap: 16px; }
+  .msg { display: flex; gap: 12px; animation: fadeIn 0.3s ease; }
+  .msg.user { flex-direction: row-reverse; }
+  .msg-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1em; flex-shrink: 0; }
+  .msg.user .msg-avatar { background: #1e1b4b; }
+  .msg.assistant .msg-avatar { background: #0c1a2e; }
+  .msg-body { max-width: 72%; }
+  .msg-bubble { padding: 12px 16px; border-radius: 12px; font-size: 0.9em; line-height: 1.6; }
+  .msg.user .msg-bubble { background: #1e1b4b; border: 1px solid #3730a3; }
+  .msg.assistant .msg-bubble { background: var(--surface2); border: 1px solid var(--border); }
+  .msg-meta { font-size: 0.72em; color: var(--muted); margin-top: 4px; }
+  .msg.user .msg-meta { text-align: right; }
+  .sources-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .source-chip { background: #0c2a1a; border: 1px solid #064e2a; color: var(--accent3); padding: 2px 8px; border-radius: 12px; font-size: 0.72em; font-family: 'JetBrains Mono', monospace; }
+
+  .chat-input-area { border-top: 1px solid var(--border); padding: 16px 0; }
+  .session-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
+  .session-label { font-size: 0.78em; color: var(--muted); }
+  .session-id { font-family: 'JetBrains Mono', monospace; font-size: 0.78em; color: var(--accent2); }
+  .input-row { display: flex; gap: 10px; }
+  textarea {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+    color: var(--text); padding: 12px 16px; font-family: 'Syne', sans-serif; font-size: 0.9em;
+    resize: none; outline: none; transition: border 0.15s;
+  }
+  textarea:focus { border-color: var(--accent); }
+  .send-btn {
+    background: var(--accent); color: white; border: none; border-radius: 10px;
+    padding: 12px 20px; cursor: pointer; font-family: 'Syne', sans-serif; font-weight: 600;
+    transition: all 0.15s; font-size: 0.9em;
+  }
+  .send-btn:hover { background: #6d28d9; }
+  .send-btn:disabled { background: var(--muted); cursor: not-allowed; }
+
+  /* Upload panel */
+  .upload-zone {
+    border: 2px dashed var(--border); border-radius: 16px; padding: 48px;
+    text-align: center; cursor: pointer; transition: all 0.2s;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: #1a1a2e; }
+  .upload-icon { font-size: 3em; margin-bottom: 12px; }
+  .upload-hint { color: var(--muted); font-size: 0.9em; margin-top: 8px; }
+  #fileInput { display: none; }
+
+  /* Search panel */
+  .search-bar { display: flex; gap: 10px; margin-bottom: 24px; }
+  .search-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); padding: 12px 16px; font-family: 'Syne', sans-serif; font-size: 0.9em; outline: none; }
+  .search-input:focus { border-color: var(--accent2); }
+  .search-btn { background: var(--accent2); color: white; border: none; border-radius: 10px; padding: 12px 20px; cursor: pointer; font-family: 'Syne', sans-serif; font-weight: 600; }
+  .hit-card {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px; margin-bottom: 12px; animation: fadeIn 0.3s ease;
+  }
+  .hit-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .hit-source { font-family: 'JetBrains Mono', monospace; font-size: 0.8em; color: var(--accent2); }
+  .hit-score { font-family: 'JetBrains Mono', monospace; font-size: 0.8em; }
+  .score-high { color: var(--accent3); }
+  .score-med { color: #f59e0b; }
+  .score-low { color: var(--danger); }
+  .hit-section { font-size: 0.78em; color: var(--muted); margin-bottom: 8px; }
+  .hit-text { font-size: 0.88em; line-height: 1.6; color: #cbd5e1; }
+
+  /* Docs list panel */
+  .doc-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+  .doc-name { font-family: 'JetBrains Mono', monospace; font-size: 0.9em; }
+  .doc-delete { background: none; border: 1px solid var(--danger); color: var(--danger); padding: 4px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8em; }
+  .doc-delete:hover { background: var(--danger); color: white; }
+
+  /* Toast */
+  .toast-container { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 8px; z-index: 999; }
+  .toast { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px; font-size: 0.88em; animation: slideIn 0.3s ease; max-width: 320px; }
+  .toast.success { border-color: var(--accent3); }
+  .toast.error { border-color: var(--danger); }
+
+  /* Spinner */
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; }
+
+  /* Utils */
+  .flex { display: flex; }
+  .gap-2 { gap: 8px; }
+  .items-center { align-items: center; }
+  .text-muted { color: var(--muted); font-size: 0.85em; }
+  .mt-4 { margin-top: 16px; }
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-icon { font-size: 3em; margin-bottom: 12px; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo"><span>🧠</span> MCP Assistant</div>
+
+    <div class="nav-section">Main</div>
+    <button class="nav-btn active" onclick="showPanel('chat')">💬 Chat & Q&A</button>
+    <button class="nav-btn" onclick="showPanel('search')">🔍 Semantic Search</button>
+
+    <div class="nav-section">Knowledge Base</div>
+    <button class="nav-btn" onclick="showPanel('upload')">📤 Upload Document</button>
+    <button class="nav-btn" onclick="showPanel('docs')">📚 Documents</button>
+
+    <div class="nav-section">MCP Tools</div>
+    <button class="nav-btn" onclick="showPanel('tools')">🔧 Tool Inspector</button>
+
+    <div id="sidebarStats" class="stats-box">
+      <div style="font-size:0.75em;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Index Stats</div>
+      <div class="stat-row"><span>Documents</span><span class="stat-val" id="statDocs">–</span></div>
+      <div class="stat-row"><span>Chunks</span><span class="stat-val" id="statChunks">–</span></div>
+      <div class="stat-row"><span>LLM</span><span class="stat-val" id="statLLM">–</span></div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <h2 id="panelTitle">Chat & Q&A</h2>
+      <span class="badge" id="topBadge">RAG Pipeline</span>
+    </div>
+
+    <div class="content">
+
+      <!-- Chat Panel -->
+      <div id="panel-chat" class="panel active">
+        <div class="chat-layout">
+          <div id="messages" class="messages">
+            <div class="msg assistant">
+              <div class="msg-avatar">🧠</div>
+              <div class="msg-body">
+                <div class="msg-bubble">Hello! I'm your AI assistant with access to your organization's knowledge base. Ask me anything about the indexed documents.</div>
+                <div class="msg-meta">Ready</div>
+              </div>
+            </div>
+          </div>
+          <div class="chat-input-area">
+            <div class="session-row">
+              <span class="session-label">Session:</span>
+              <span class="session-id" id="sessionIdDisplay"></span>
+              <button onclick="newSession()" style="background:none;border:1px solid var(--border);color:var(--muted);padding:2px 8px;border-radius:4px;cursor:pointer;font-size:0.75em">New</button>
+              <select id="topKSelect" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:2px 6px;border-radius:4px;font-size:0.78em;margin-left:auto">
+                <option value="3">Top 3</option>
+                <option value="5" selected>Top 5</option>
+                <option value="10">Top 10</option>
+              </select>
+            </div>
+            <div class="input-row">
+              <textarea id="chatInput" rows="3" placeholder="Ask a question about the knowledge base… (Enter to send, Shift+Enter for newline)"></textarea>
+              <button class="send-btn" id="sendBtn" onclick="sendMessage()">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Search Panel -->
+      <div id="panel-search" class="panel">
+        <div class="search-bar">
+          <input id="searchInput" class="search-input" placeholder="Search knowledge base semantically…" onkeydown="if(event.key==='Enter')runSearch()">
+          <button class="search-btn" onclick="runSearch()">Search</button>
+          <select id="searchTopK" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:10px;font-size:0.9em">
+            <option value="3">3 results</option>
+            <option value="5" selected>5 results</option>
+            <option value="10">10 results</option>
+          </select>
+        </div>
+        <div id="searchResults"></div>
+      </div>
+
+      <!-- Upload Panel -->
+      <div id="panel-upload" class="panel">
+        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+          <div class="upload-icon">📄</div>
+          <div style="font-size:1.1em;font-weight:600">Drop a Markdown file or click to browse</div>
+          <div class="upload-hint">.md files only — will be chunked, embedded, and indexed automatically</div>
+          <input type="file" id="fileInput" accept=".md" onchange="uploadFile(this.files[0])">
+        </div>
+        <div id="uploadResult" class="mt-4"></div>
+        <div class="mt-4">
+          <button onclick="bulkIndex()" style="background:var(--accent3);color:white;border:none;border-radius:10px;padding:10px 20px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:600">
+            🔄 Re-index all knowledge_base/ docs
+          </button>
+        </div>
+      </div>
+
+      <!-- Docs Panel -->
+      <div id="panel-docs" class="panel">
+        <div id="docsList"></div>
+      </div>
+
+      <!-- Tools Panel -->
+      <div id="panel-tools" class="panel">
+        <div id="toolsList"></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- Toasts -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+const API = ''; // same-origin; change to 'http://localhost:8000' if needed
+
+let sessionId = generateId();
+document.getElementById('sessionIdDisplay').textContent = sessionId.slice(0,12)+'…';
+
+function generateId() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random()*16|0;
+    return (c==='x'?r:(r&0x3|0x8)).toString(16);
+  });
+}
+
+function newSession() {
+  sessionId = generateId();
+  document.getElementById('sessionIdDisplay').textContent = sessionId.slice(0,12)+'…';
+  document.getElementById('messages').innerHTML = `<div class="msg assistant"><div class="msg-avatar">🧠</div><div class="msg-body"><div class="msg-bubble">New session started. Ask me anything!</div></div></div>`;
+}
+
+function showPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  event.currentTarget.classList.add('active');
+  const titles = {chat:'Chat & Q&A', search:'Semantic Search', upload:'Upload Document', docs:'Documents', tools:'MCP Tool Inspector'};
+  const badges = {chat:'RAG Pipeline', search:'Vector Search', upload:'Indexing', docs:'Knowledge Base', tools:'MCP Tools'};
+  document.getElementById('panelTitle').textContent = titles[name];
+  document.getElementById('topBadge').textContent = badges[name];
+  if(name==='docs') loadDocs();
+  if(name==='tools') loadTools();
+}
+
+// ── Stats ───────────────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const r = await fetch(API+'/health');
+    const d = await r.json();
+    document.getElementById('statDocs').textContent = d.indexed_documents;
+    document.getElementById('statChunks').textContent = d.indexed_chunks;
+    document.getElementById('statLLM').textContent = d.llm_model?.split('-').slice(0,2).join('-') || '–';
+  } catch(e) { /* API not connected */ }
+}
+loadStats();
+setInterval(loadStats, 30000);
+
+// ── Chat ────────────────────────────────────────────────────────────────────
+document.getElementById('chatInput').addEventListener('keydown', e => {
+  if(e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const question = input.value.trim();
+  if(!question) return;
+
+  const topK = parseInt(document.getElementById('topKSelect').value);
+  input.value = '';
+
+  appendMsg('user', question);
+
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+
+  const thinkingId = appendMsg('assistant', '<span class="spinner"></span> Retrieving context…', null, true);
+
+  try {
+    const r = await fetch(API+'/api/v1/qa/ask', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ question, session_id: sessionId, top_k: topK, use_memory: true })
+    });
+    const d = await r.json();
+    updateMsg(thinkingId, d.answer || d.detail || 'Error', d.sources);
+  } catch(e) {
+    updateMsg(thinkingId, '⚠️ Could not reach the API. Make sure the server is running at localhost:8000.', []);
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Send';
+}
+
+let msgCounter = 0;
+function appendMsg(role, text, sources=null, temp=false) {
+  const id = 'msg-'+msgCounter++;
+  const msgs = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'msg '+role;
+  div.id = id;
+  const avatar = role==='user' ? '👤' : '🧠';
+  let sourcesHtml = '';
+  if(sources && sources.length) {
+    sourcesHtml = '<div class="sources-chips">' + sources.map(s=>`<span class="source-chip">📄 ${s}</span>`).join('') + '</div>';
+  }
+  div.innerHTML = `<div class="msg-avatar">${avatar}</div><div class="msg-body"><div class="msg-bubble">${text.replace(/\n/g,'<br>')}</div>${sourcesHtml}<div class="msg-meta">${new Date().toLocaleTimeString()}</div></div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return id;
+}
+
+function updateMsg(id, text, sources=[]) {
+  const div = document.getElementById(id);
+  if(!div) return;
+  let sourcesHtml = '';
+  if(sources && sources.length) {
+    sourcesHtml = '<div class="sources-chips">' + sources.map(s=>`<span class="source-chip">📄 ${s}</span>`).join('') + '</div>';
+  }
+  div.querySelector('.msg-bubble').innerHTML = text.replace(/\n/g,'<br>');
+  const existing = div.querySelector('.sources-chips');
+  if(existing) existing.remove();
+  if(sourcesHtml) div.querySelector('.msg-body').insertAdjacentHTML('beforeend', sourcesHtml);
+}
+
+// ── Search ──────────────────────────────────────────────────────────────────
+async function runSearch() {
+  const query = document.getElementById('searchInput').value.trim();
+  if(!query) return;
+  const topK = parseInt(document.getElementById('searchTopK').value);
+  const results = document.getElementById('searchResults');
+  results.innerHTML = '<div class="flex gap-2 items-center text-muted"><span class="spinner"></span> Searching…</div>';
+
+  try {
+    const r = await fetch(API+'/api/v1/search/query', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({query, top_k: topK})
+    });
+    const d = await r.json();
+    if(!d.hits || d.hits.length===0) {
+      results.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><div>No results found. Try a different query.</div></div>';
+      return;
+    }
+    results.innerHTML = d.hits.map(h => {
+      const score = h.score;
+      const scoreClass = score > 0.7 ? 'score-high' : score > 0.4 ? 'score-med' : 'score-low';
+      return `<div class="hit-card">
+        <div class="hit-header">
+          <span class="hit-source">📄 ${h.metadata.source || 'unknown'}</span>
+          <span class="hit-score ${scoreClass}">${(score*100).toFixed(0)}% match</span>
+        </div>
+        <div class="hit-section">§ ${h.metadata.section || 'General'}</div>
+        <div class="hit-text">${h.text.slice(0,300)}${h.text.length>300?'…':''}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    results.innerHTML = '<div class="toast error">API error — is the server running?</div>';
+  }
+}
+
+// ── Upload ──────────────────────────────────────────────────────────────────
+function handleDragOver(e) { e.preventDefault(); document.getElementById('uploadZone').classList.add('drag'); }
+function handleDragLeave() { document.getElementById('uploadZone').classList.remove('drag'); }
+function handleDrop(e) { e.preventDefault(); handleDragLeave(); uploadFile(e.dataTransfer.files[0]); }
+
+async function uploadFile(file) {
+  if(!file || !file.name.endsWith('.md')) { showToast('Only .md files are supported', 'error'); return; }
+  const result = document.getElementById('uploadResult');
+  result.innerHTML = '<div class="flex gap-2 items-center text-muted"><span class="spinner"></span> Uploading & indexing…</div>';
+
+  const form = new FormData();
+  form.append('file', file);
+
+  try {
+    const r = await fetch(API+'/api/v1/documents/upload', { method:'POST', body: form });
+    const d = await r.json();
+    result.innerHTML = `<div class="hit-card"><div style="color:var(--accent3);font-weight:600">✅ Indexed successfully</div><div class="mt-4 text-muted" style="font-family:'JetBrains Mono',monospace;font-size:0.85em">File: ${d.filename}<br>Chunks: ${d.chunks}<br>Sections: ${d.sections}<br>Characters: ${d.total_chars}</div></div>`;
+    showToast(`Indexed ${d.filename} (${d.chunks} chunks)`, 'success');
+    loadStats();
+  } catch(e) {
+    result.innerHTML = '<div class="toast error">Upload failed — is the server running?</div>';
+  }
+}
+
+async function bulkIndex() {
+  showToast('Re-indexing all documents…');
+  try {
+    const r = await fetch(API+'/api/v1/documents/bulk-index', { method:'POST' });
+    const d = await r.json();
+    showToast(`Re-indexed ${d.indexed} docs (${d.total_chunks} chunks)`, 'success');
+    loadStats();
+  } catch(e) { showToast('Bulk index failed', 'error'); }
+}
+
+// ── Docs ────────────────────────────────────────────────────────────────────
+async function loadDocs() {
+  const list = document.getElementById('docsList');
+  list.innerHTML = '<div class="flex gap-2 items-center text-muted"><span class="spinner"></span> Loading…</div>';
+  try {
+    const r = await fetch(API+'/api/v1/documents/list');
+    const d = await r.json();
+    if(!d.documents.length) {
+      list.innerHTML = '<div class="empty-state"><div class="empty-icon">📚</div><div>No documents indexed yet. Upload some Markdown files!</div></div>';
+      return;
+    }
+    list.innerHTML = d.documents.map(doc => `
+      <div class="doc-card">
+        <div>
+          <div class="doc-name">📄 ${doc}</div>
+          <div class="text-muted" style="margin-top:4px;font-size:0.78em">Indexed</div>
+        </div>
+        <button class="doc-delete" onclick="deleteDoc('${doc}')">Delete</button>
+      </div>`).join('');
+  } catch(e) {
+    list.innerHTML = '<div class="toast error">Could not load documents</div>';
+  }
+}
+
+async function deleteDoc(filename) {
+  if(!confirm(`Delete "${filename}" from index?`)) return;
+  try {
+    await fetch(API+`/api/v1/documents/${encodeURIComponent(filename)}`, { method:'DELETE' });
+    showToast(`Deleted ${filename}`, 'success');
+    loadDocs(); loadStats();
+  } catch(e) { showToast('Delete failed', 'error'); }
+}
+
+// ── Tools ───────────────────────────────────────────────────────────────────
+async function loadTools() {
+  const list = document.getElementById('toolsList');
+  list.innerHTML = '<div class="flex gap-2 items-center text-muted"><span class="spinner"></span> Loading…</div>';
+  try {
+    const r = await fetch(API+'/api/v1/search/tools');
+    const d = await r.json();
+    list.innerHTML = d.tools.map(t => `
+      <div class="hit-card">
+        <div style="font-weight:600;color:var(--accent);margin-bottom:8px;font-family:'JetBrains Mono',monospace">${t.name}</div>
+        <div class="text-muted" style="margin-bottom:12px">${t.description}</div>
+        <div style="background:var(--code);border-radius:8px;padding:12px;font-family:'JetBrains Mono',monospace;font-size:0.8em;color:#a5b4fc">${JSON.stringify(t.parameters, null, 2)}</div>
+      </div>`).join('');
+  } catch(e) {
+    list.innerHTML = '<div class="toast error">Could not load tools</div>';
+  }
+}
+
+// ── Toast ────────────────────────────────────────────────────────────────────
+function showToast(msg, type='info') {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = 'toast '+(type==='success'?'success':type==='error'?'error':'');
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+</script>
+</body>
+</html>

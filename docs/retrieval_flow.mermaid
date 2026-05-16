@@ -1,0 +1,27 @@
+---
+title: MCP Context Assistant — Retrieval Flow
+---
+flowchart TD
+    A([User Query]) --> B{PromptGuardrails}
+    B -->|blocked| C([⛔ Blocked Response])
+    B -->|safe| D[EmbeddingService\nall-MiniLM-L6-v2\nFREE local model]
+    D --> E[(ChromaDB\nVector Store\nCosine Similarity)]
+    E --> F[Top-K Chunks\nwith scores]
+    F --> G[ContextManager\n• Rank by score\n• Deduplicate\n• Token budgeting\n• Source headers]
+    G --> H[MemoryManager\nPrepend session history]
+    H --> I[Prompt Assembly\nSystem + Context + History + Query]
+    I --> J{LLM Provider}
+    J -->|Anthropic| K[Claude API]
+    J -->|Ollama| L[Local LLaMA/Mistral]
+    J -->|Mock| M[Test Response]
+    K --> N[Answer + Sources]
+    L --> N
+    M --> N
+    N --> O[MemoryManager\nStore turn]
+    O --> P([Response to User\n+ source citations\n+ metadata])
+
+    style A fill:#7c3aed,color:#fff
+    style P fill:#059669,color:#fff
+    style C fill:#dc2626,color:#fff
+    style E fill:#1e40af,color:#fff
+    style J fill:#92400e,color:#fff
