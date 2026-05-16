@@ -13,44 +13,44 @@ Upload Markdown docs, index them, and ask AI questions grounded in your knowledg
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        FastAPI Application                          │
 │                                                                     │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
-│  │  /documents  │  │   /search    │  │     /qa      │             │
-│  │   Upload     │  │  Semantic    │  │  Grounded    │             │
-│  │   Index      │  │   Search     │  │  Q&A + Chat  │             │
-│  │   Delete     │  │  Tool Call   │  │  Streaming   │             │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐               │
+│  │  /documents  │  │   /search    │  │     /qa      │               │
+│  │   Upload     │  │  Semantic    │  │  Grounded    │               │
+│  │   Index      │  │   Search     │  │  Q&A + Chat  │               │
+│  │   Delete     │  │  Tool Call   │  │  Streaming   │               │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘               │
 │         │                 │                  │                      │
 │         ▼                 ▼                  ▼                      │
-│  ┌──────────────────────────────────────────────────────┐          │
-│  │            Retrieval Orchestrator (MCP-style)        │          │
-│  │                                                      │          │
-│  │  ┌─────────────────┐    ┌──────────────────────┐    │          │
-│  │  │ PromptGuardrails│    │   ContextManager     │    │          │
-│  │  │  - Injection    │    │  - Token budgeting   │    │          │
-│  │  │    detection    │    │  - De-duplication    │    │          │
-│  │  │  - Length check │    │  - Source headers    │    │          │
-│  │  │  - Blocklist    │    │  - Relevance ranking │    │          │
-│  │  └─────────────────┘    └──────────────────────┘    │          │
-│  │                                                      │          │
-│  │  MCP Tool Definitions:                               │          │
-│  │    • retrieve_context   • list_documents             │          │
-│  │    • get_memory                                      │          │
-│  └──────────────────────────┬───────────────────────────┘          │
+│  ┌──────────────────────────────────────────────────────┐           │
+│  │            Retrieval Orchestrator (MCP-style)        │           │
+│  │                                                      │           │
+│  │  ┌─────────────────┐    ┌──────────────────────┐     │           │
+│  │  │ PromptGuardrails│    │   ContextManager     │     │           │
+│  │  │  - Injection    │    │  - Token budgeting   │     │           │
+│  │  │    detection    │    │  - De-duplication    │     │           │
+│  │  │  - Length check │    │  - Source headers    │     │           │
+│  │  │  - Blocklist    │    │  - Relevance ranking │     │           │
+│  │  └─────────────────┘    └──────────────────────┘     │           │
+│  │                                                      │           │
+│  │  MCP Tool Definitions:                               │           │
+│  │    • retrieve_context   • list_documents             │           │
+│  │    • get_memory                                      │           │
+│  └──────────────────────────┬───────────────────────────┘           │
 │                             │                                       │
-│         ┌───────────────────┼──────────────────┐                   │
-│         ▼                   ▼                  ▼                   │
-│  ┌─────────────┐  ┌──────────────────┐  ┌──────────────┐          │
-│  │  VectorStore │  │  EmbeddingService│  │  LLM Service │          │
-│  │  (ChromaDB)  │  │ (sentence-transf)│  │  Anthropic / │          │
-│  │  Persistent  │  │  all-MiniLM-L6   │  │  Ollama /    │          │
-│  │  cosine sim  │  │  FREE local      │  │  Mock        │          │
-│  └─────────────┘  └──────────────────┘  └──────────────┘          │
+│         ┌───────────────────┼──────────────────┐                    │
+│         ▼                   ▼                  ▼                    │
+│  ┌──────────────┐  ┌──────────────────┐  ┌──────────────┐           │
+│  │  VectorStore │  │  EmbeddingService│  │  LLM Service │           │
+│  │  (ChromaDB)  │  │ (sentence-transf)│  │  Anthropic / │           │
+│  │  Persistent  │  │  all-MiniLM-L6   │  │  Ollama /    │           │
+│  │  cosine sim  │  │  FREE local      │  │  Mock        │           │ 
+│  └──────────────┘  └──────────────────┘  └──────────────┘           │
 │                                                                     │
-│  ┌──────────────────────────────────────────────────────┐          │
-│  │                   Memory Manager                     │          │
-│  │     Per-session JSON files in /memory/               │          │
-│  │     Sliding window · Source citations · Timestamps   │          │
-│  └──────────────────────────────────────────────────────┘          │
+│  ┌──────────────────────────────────────────────────────┐           │
+│  │                   Memory Manager                     │           │
+│  │     Per-session JSON files in /memory/               │           │
+│  │     Sliding window · Source citations · Timestamps   │           │
+│  └──────────────────────────────────────────────────────┘           │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
